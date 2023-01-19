@@ -219,6 +219,12 @@ class DisplayTitleHooks {
 				$parser->getOutput()->setTitleText( $displaytitle );
 			}
 		}
+		if ( $title !== null ) { //handle also normal pages in case of display titles set in a slot different from main
+			$found = self::getDisplayTitle( $title, $displaytitle );
+			if ( $found ) {
+				$parser->getOutput()->setTitleText( $displaytitle );
+			}
+		}
 	}
 
 	/**
