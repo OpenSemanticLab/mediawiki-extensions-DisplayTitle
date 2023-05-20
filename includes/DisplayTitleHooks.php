@@ -15,6 +15,55 @@ class DisplayTitleHooks {
 	public static function onParserFirstCallInit( &$parser ) {
 		$parser->setFunctionHook( 'getdisplaytitle',
 			'DisplayTitleHooks::getdisplaytitleParserFunction' );
+		$parser->setFunctionHook( 'seti18ndisplaytitle',
+			'DisplayTitleHooks::seti18ndisplaytitleParserFunction' );
+	}
+
+	public static function seti18ndisplaytitleParserFunction( &$parser ) {
+		// Suppose the user invoked the parser function like so:
+		// {{#myparserfunction: foo=bar | apple=orange | banana }}
+	
+		$i18ntitles = DisplayTitleHooks::extractOptions( array_slice( func_get_args(), 1 ) );
+	
+		// Now you've got an array that looks like this:
+		// [foo] => 'bar'
+		// [apple] => 'orange'
+		// [banana] => true
+		// Continue writing your code...
+
+		foreach ($i18ntitles as $lang => $title) {
+        	if ($lang) $parser->getOutput()->setProperty( 'displaytitle_' . $lang, $title );
+		}
+
+        // Note if other pages change based on a property, you should see $wgPagePropLinkInvalidations
+        // to automatically invalidate dependent page. In this example that would be pages that
+        // use <getprop page="something>. However that would require adding a linking table
+        // (since none of the standard ones work for this example) which is a bit beyond the
+        // scope of this simple example.
+
+        return '';
+	}
+
+	/**
+	 * Converts an array of values in form [0] => "name=value"
+	 * into a real associative array in form [name] => value
+	 * If no = is provided, true is assumed like this: [name] => true
+	 *
+	 * @param array string $options
+	 * @return array $results
+	 */
+	public static function extractOptions( array $options ) {
+		$results = [];
+		foreach ( $options as $option ) {
+			$pair = array_map( 'trim', explode( '=', $option, 2 ) );
+			if ( count( $pair ) === 2 ) {
+				$results[ $pair[0] ] = $pair[1];
+			}
+			if ( count( $pair ) === 1 ) {
+				$results[ $pair[0] ] = true;
+			}
+		}
+		return $results;
 	}
 
 	/**
@@ -272,8 +321,25 @@ class DisplayTitleHooks {
 			$title = $redirectTarget;
 		}
 		$id = $title->getArticleID();
+		$optionsLookup = MediaWikiServices::getInstance()->getUserOptionsLookup();
+		/*$lang = $optionsLookup->getOption(
+			RequestContext::getMain()->getUser(),
+			'language'
+		);*/
+		$lang = "de";
+		$i18nvalues = PageProps::getInstance()->getProperties( $title, 'displaytitle_' . $lang);
 		$values = PageProps::getInstance()->getProperties( $title, 'displaytitle' );
-		if ( array_key_exists( $id, $values ) ) {
+		if ( array_key_exists( $id, $i18nvalues ) ) {
+			$value = $i18nvalues[$id];
+			if ( trim( str_replace( '&#160;', '', strip_tags( $value ) ) ) !== '' &&
+				$value !== $originalPageName ) {
+				$displaytitle = $value;
+				if ( $wrap ) {
+					$displaytitle = new HtmlArmor( $displaytitle );
+				}
+				return true;
+			}
+		} elseif ( array_key_exists( $id, $values ) ) {
 			$value = $values[$id];
 			if ( trim( str_replace( '&#160;', '', strip_tags( $value ) ) ) !== '' &&
 				$value !== $originalPageName ) {
