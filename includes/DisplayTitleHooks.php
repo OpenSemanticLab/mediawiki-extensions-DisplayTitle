@@ -184,13 +184,15 @@ class DisplayTitleHooks implements
 	 */
 	public function onOutputPageParserOutput( $outputPage, $parserOutput ): void {
 		$title = $outputPage->getTitle();
-		if ( $title !== null && $title->isTalkPage() ) {
+		if ( $title !== null ) {
 			$subjectPage = Title::castFromLinkTarget( $this->namespaceInfo->getSubjectPage( $title ) );
 			if ( $subjectPage->exists() ) {
 				$found = $this->displayTitleService->getDisplayTitle( $subjectPage, $displaytitle );
 				if ( $found ) {
+					if ( $title->isTalkPage() ) {
 					$displaytitle = wfMessage( 'displaytitle-talkpagetitle',
 						$displaytitle )->plain();
+					}
 					$parserOutput->setTitleText( $displaytitle );
 				}
 			}
